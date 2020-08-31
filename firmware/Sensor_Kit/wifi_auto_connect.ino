@@ -1,112 +1,14 @@
+ #include <ESP8266HTTPClient.h>
+#include <ESP8266WebServer.h>       
 #include <ESP8266WiFi.h>
-#include <ESP8266HTTPClient.h>
-#include <ESP8266WebServer.h>
 #include <FirebaseArduino.h>
+
+#include <Wire.h> 
 #include <EEPROM.h>
- #define FIREBASE_HOST "ionkid-abd2f.firebaseio.com"
-#define FIREBASE_AUTH "12Bs4sG60U96pN0VqAYxIRzKmo55omcTIUPejNZF"
-//Variables
 int i = 0;
 int statusCode;
-const char* ssid = "text";
-const char* passphrase = "text";
-String st;
-String content;
- 
- 
-//Function Decalration
-bool testWifi(void);
-void launchWeb(void);
-void setupAP(void);
- 
-//Establishing Local server at port 80 whenever required
-ESP8266WebServer server(80);
- 
-void setup()
-{
- 
-  Serial.begin(115200); //Initialising if(DEBUG)Serial Monitor
-  Serial.println();
-  Serial.println("Disconnecting previously connected WiFi");
-  WiFi.disconnect();
-  EEPROM.begin(512); //Initialasing EEPROM
-  delay(10);
-  pinMode(LED_BUILTIN, OUTPUT);
-  Serial.println();
-  Serial.println();
-  Serial.println("Startup");
- 
-  //---------------------------------------- Read EEPROM for SSID and pass
-  Serial.println("Reading EEPROM ssid");
- 
-  String esid;
-  for (int i = 0; i < 32; ++i)
-  {
-    esid += char(EEPROM.read(i));
-  }
-  Serial.println();
-  Serial.print("SSID: ");
-  Serial.println(esid);
-  Serial.println("Reading EEPROM pass");
- 
-  String epass = "";
-  for (int i = 32; i < 96; ++i)
-  {
-    epass += char(EEPROM.read(i));
-  }
-  Serial.print("PASS: ");
-  Serial.println(epass);
- 
- 
-  WiFi.begin(esid.c_str(), epass.c_str());
-  if (testWifi())
-  {
-    Serial.println("Succesfully Connected!!!");
-     Serial.println(WiFi.localIP());
-     Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
-    return;
-  }
-  else
-  {
-    Serial.println("Turning the HotSpot On");
-    launchWeb();
-    setupAP();// Setup HotSpot
-  }
- 
-  Serial.println();
-  Serial.println("Waiting.");
-  
-  while ((WiFi.status() != WL_CONNECTED))
-  {
-    Serial.print(".");
-    delay(100);
-    server.handleClient();
-  }
- 
-}
-void loop() {
-  if ((WiFi.status() == WL_CONNECTED))
-  {
- Firebase.setString("WiFi_auto_connect_test", "Hi)))))");
 
-    for (int i = 0; i < 10; i++)
-    {
-      digitalWrite(LED_BUILTIN, HIGH);
-      delay(1000);
-      digitalWrite(LED_BUILTIN, LOW);
-      delay(1000);
-      
-    }
  
-  }
-  else
-  {
-  }
- 
-}
- 
- 
-//-------- Fuctions used for WiFi credentials saving and connecting to it which you do not need to change 
 bool testWifi(void)
 {
   int c = 0;

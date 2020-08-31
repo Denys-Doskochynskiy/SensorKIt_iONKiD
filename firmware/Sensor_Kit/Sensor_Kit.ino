@@ -1,4 +1,5 @@
-
+ #include <ESP8266HTTPClient.h>
+#include <ESP8266WebServer.h>       
 #include <ESP8266WiFi.h>
 #include <FirebaseArduino.h>
 #include "ADS1X15.h"
@@ -8,29 +9,80 @@
 #include "heartRate.h"
 #include <LiquidCrystal_I2C.h>
 MAX30105 particleSensor;
+#include <EEPROM.h>
+#define FIREBASE_HOST "ionkid-abd2f.firebaseio.com"
+#define FIREBASE_AUTH "12Bs4sG60U96pN0VqAYxIRzKmo55omcTIUPejNZF"
 // set the LCD number of columns and rows
 int lcdColumns = 16;
 int lcdRows = 2;
-const byte RATE_SIZE = 4; //Increase this for more averaging. 4 is good.
+const byte RATE_SIZE = 7; //Increase this for more averaging. 4 is good.
 byte rates[RATE_SIZE]; //Array of heart rates
 byte rateSpot = 0;
 long lastBeat = 0; //Time at which the last beat occurred
-
+long irValue;
 float beatsPerMinute;
 int beatAvg;
 
 LiquidCrystal_I2C lcd(0x27, lcdColumns, lcdRows);  
 
 
-#define FIREBASE_HOST "ionkid-abd2f.firebaseio.com"
-#define FIREBASE_AUTH "12Bs4sG60U96pN0VqAYxIRzKmo55omcTIUPejNZF"
-#define WIFI_SSID "TP-Link"
-#define WIFI_PASSWORD "26042002"
-
 ADS1115 ADS(0x48);
+
+ 
+//Function Decalration
+
+ 
+//Establishing Local server at port 80 whenever required
+ ESP8266WebServer server(80);
+ 
+const char* ssid = "text";
+const char* passphrase = "text";
+String st;
+String content;
+ bool testWifi(void);
+void launchWeb(void);
+void setupAP(void);
+
 void setup() { 
   Serial.begin(9600);
-  if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
+   Serial.println();
+  Serial.println("Disconnecting previously connected WiFi");
+  WiFi.disconnect();
+  EEPROM.begin(512); //Initialasing EEPROM
+  delay(10);
+  pinMode(LED_BUILTIN, OUTPUT);
+  Serial.println();
+  Serial.println();
+  Serial.println("Startup");
+ 
+  //---------------------------------------- Read EEPROM for SSID and pass
+  Serial.println("Reading EEPROM ssid");
+ 
+  String esid;
+  for (int i = 0; i < 32; ++i)
+  {
+    esid += char(EEPROM.read(i));
+  }
+  Serial.println();
+  Serial.print("SSID: ");
+  Serial.println(esid);
+  Serial.println("Reading EEPROM pass");
+ 
+  String epass = "";
+  for (int i = 32; i < 96; ++i)
+  {
+    epass += char(EEPROM.read(i));
+  }
+  Serial.print("PASS: ");
+  Serial.println(epass);
+ 
+ 
+  WiFi.begin(esid.c_str(), epass.c_str());
+  if (testWifi())
+  {
+    Serial.println("Succesfully Connected!!!");
+     Serial.println(WiFi.localIP());
+     if (!particleSensor.begin(Wire, I2C_SPEED_FAST)) //Use default I2C port, 400kHz speed
   {lcd.clear();
   lcd.setCursor(0,0);
     lcd.print("MAX30105 not found");
@@ -46,15 +98,7 @@ lcd.init();
   
  
 ADS.begin();
-  // connect to wifi.
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  lcd.print("connecting");
-  while (WiFi.status() != WL_CONNECTED) {
-    lcd.print(".");
-    delay(500);
-    
-      
-  }lcd.clear();
+   lcd.clear();
  
   Serial.println();
   Serial.print("connected: ");
@@ -69,7 +113,26 @@ ADS.begin();
     }
     
       Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
-      }
+    return;
+  }
+  else
+  {
+    Serial.println("Turning the HotSpot On");
+    launchWeb();
+    setupAP();// Setup HotSpot
+  }
+ 
+  Serial.println();
+  Serial.println("Waiting.");
+  
+  while ((WiFi.status() != WL_CONNECTED))
+  {
+    Serial.print(".");
+    delay(100);
+    server.handleClient();
+  }
+  
+}
   
   
 
@@ -85,55 +148,10 @@ void loop() {
 isActivated= Firebase.getString("Arduino/ActivateCode/Activate");
  isChecked=1;
     }
-   long irValue = particleSensor.getIR();
+  irValue = particleSensor.getIR();
  if( isActivated=="1"){
-  if (checkForBeat(irValue) == true)
-  {
-    //We sensed a beat!
-    long delta = millis() - lastBeat;
-    lastBeat = millis();
-
-    beatsPerMinute = 60 / (delta / 1000.0);
-
-    if (beatsPerMinute < 255 && beatsPerMinute > 20)
-    {
-      rates[rateSpot++] = (byte)beatsPerMinute; //Store this reading in the array
-      rateSpot %= RATE_SIZE; //Wrap variable
-
-      //Take average of readings
-      beatAvg = 0;
-      for (byte x = 0 ; x < RATE_SIZE ; x++)
-        beatAvg += rates[x];
-      beatAvg /= RATE_SIZE;
-    }
-    
-  }
-  
- // 
-  Serial.print("IR=");
-  Serial.print(irValue);
-  Serial.print(", BPM=");
-  Serial.print(beatsPerMinute);
-  Serial.print(", Avg BPM=");
-  Serial.print(beatAvg);
-  lcd.setCursor(0,0);
-  lcd.print("UserID:");
-  lcd.setCursor(7,0);
-  lcd.print(user);
-  lcd.setCursor(0,1);
-  lcd.print("BPM=");
-  lcd.setCursor(4,1);
-  lcd.print(beatAvg);
-if(increment==1000){
-    Firebase.setInt("users/"+user+"/BPM",beatAvg);
-    increment=0;
-    }
-
-   if (irValue < 50000)
-    Serial.print(" No finger?");
-  Serial.println();
- 
-  }else{
+ heart_rate();
+ } else{
    
      lcd.clear();
      lcd.setCursor(0,0);
@@ -141,54 +159,6 @@ if(increment==1000){
  }
 increment++;
 }
- /* 
-  // set bool value
-  Firebase.setBool("Arduino/messageArduino/truth", false);
-  // handle error
-  if (Firebase.failed()) {
-      Serial.print("setting /truth failed:");
-      Serial.println(Firebase.error());  
-      return;
-  }
-  delay(1000);
 
-  // append a new value to /logs
-  String name = Firebase.pushInt("Arduino/logs", n++);
-  // handle error
-  if (Firebase.failed()) {
-      Serial.print("pushing /logs failed:");
-      Serial.println(Firebase.error());  
-      return;
-  }
-  Serial.print("pushed: /logs/");
-  Serial.println(name);
-  delay(1000);*/
- // set value
-/*  
-  // handle error
-  if (Firebase.failed()) {
-      Serial.print("setting /number failed:");
-      Serial.println(Firebase.error());  
-      return;
-  }
-  delay(1000);
-  
-  // update value
-  Firebase.setFloat("Arduino/messageArduino/numbers", 43.0);
-  // handle error
-  if (Firebase.failed()) {
-      Serial.print("setting /number failed:");
-      Serial.println(Firebase.error());  
-      return;
-  }
-  delay(1000);
 
-  // get value 
-  Serial.print("number: ");
-  Serial.println(Firebase.getFloat("number"));
-  delay(1000);
-
-  // remove value
-  Firebase.remove("Arduino/messageArduino/number");
-  delay(1000);
-*/
+ 
