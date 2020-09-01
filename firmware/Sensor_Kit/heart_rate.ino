@@ -25,7 +25,7 @@ void heart_rate(){
     
   }
   
- // 
+ /* 
   Serial.print("IR=");
   Serial.print(irValue);
    
@@ -34,7 +34,7 @@ void heart_rate(){
   
   Serial.print(", Avg BPM=");
   Serial.print(beatAvg);
-   Serial.print("\n");
+   Serial.print("\n");*/
   lcd.setCursor(0,0);
   lcd.print("UserID:");
   lcd.setCursor(7,0);

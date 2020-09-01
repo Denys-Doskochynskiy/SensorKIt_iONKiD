@@ -42,7 +42,7 @@ String content;
  bool testWifi(void);
 void launchWeb(void);
 void setupAP(void);
-
+void noise_sensor(void);
 void setup() { 
   Serial.begin(9600);
    Serial.println();
@@ -148,6 +148,7 @@ void loop() {
 isActivated= Firebase.getString("Arduino/ActivateCode/Activate");
  isChecked=1;
     }
+    noise_sensor();
   irValue = particleSensor.getIR();
  if( isActivated=="1"){
  heart_rate();
