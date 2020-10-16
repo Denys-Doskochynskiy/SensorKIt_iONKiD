@@ -6,5 +6,6 @@ void noise_sensor(){
   if(val_0>1030||val_0<965){
     Serial.println("Чого ти так репиш))?");
     Serial.println(val_0);
+    Firebase.setString("users/"+stringTwo+"/kids/"+kidsId+"/SKIP/noiseSensor","Чого ти так репиш))?");
     }
   }

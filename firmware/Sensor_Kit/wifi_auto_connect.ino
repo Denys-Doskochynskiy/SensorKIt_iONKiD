@@ -97,13 +97,29 @@ void createWebServer()
  
       IPAddress ip = WiFi.softAPIP();
       String ipStr = String(ip[0]) + '.' + String(ip[1]) + '.' + String(ip[2]) + '.' + String(ip[3]);
-      content = "<!DOCTYPE HTML>\r\n<html>Hello from ESP8266 at ";
+
+      content = "<!DOCTYPE HTML>\r\n<html>Welcome to S.K.I.P. ";
       content += "<form action=\"/scan\" method=\"POST\"><input type=\"submit\" value=\"scan\"></form>";
-      content += ipStr;
+      content += "<label>Your ip: </label>";
+      content +=ipStr;
+      content += "<p>";
+      content +="<label>Available near the Wi-Fi network: </label>";
       content += "<p>";
       content += st;
-      content += "</p><form method='get' action='setting'><label>SSID: </label><input name='ssid' length=32><input name='pass' length=64><input type='submit'></form>";
+      content += "</p>";
+      content +="<form method='get' action='setting'>";
+      content +="<label>SSID: </label><input name='ssid' >";
+      content +="</p>";
+      content +="<label>Password: </label><input name='pass' >";
+      content +="</p>";
+      content +="<label>Your Email: </label><input name='userID'>";
+      content +="</p>";
+      content +="<label>Please enter a kidsID : </label><input name='kidsID'>";
+      content +="</p>";
+      content +="<input type='submit'></form>";
       content += "</html>";
+      
+      
       server.send(200, "text/html", content);
     });
     server.on("/scan", []() {
@@ -118,11 +134,14 @@ void createWebServer()
     server.on("/setting", []() {
       String qsid = server.arg("ssid");
       String qpass = server.arg("pass");
-      if (qsid.length() > 0 && qpass.length() > 0) {
+       String qUserID = server.arg("userID");
+      String qKidsID = server.arg("kidsID");
+      if (qsid.length() > 0 && qpass.length() > 0 && qUserID.length() > 0 && qKidsID.length() > 0) {
         Serial.println("clearing eeprom");
-        for (int i = 0; i < 96; ++i) {
+        for (int i = 0; i < 512; ++i) {
           EEPROM.write(i, 0);
         }
+      
         Serial.println(qsid);
         Serial.println("");
         Serial.println(qpass);
@@ -141,6 +160,20 @@ void createWebServer()
           EEPROM.write(32 + i, qpass[i]);
           Serial.print("Wrote: ");
           Serial.println(qpass[i]);
+        }
+         Serial.println("writing eeprom userID:");
+        for (int i = 0; i < qUserID.length(); ++i)
+        {
+          EEPROM.write(64+i, qUserID[i]);
+          Serial.print("Wrote: ");
+          Serial.println(qUserID[i]);
+        }
+        Serial.println("writing eeprom kidsID:");
+        for (int i = 0; i < qKidsID.length(); ++i)
+        {
+          EEPROM.write(96+i, qKidsID[i]);
+          Serial.print("Wrote: ");
+          Serial.println(qKidsID[i]);
         }
         EEPROM.commit();
  

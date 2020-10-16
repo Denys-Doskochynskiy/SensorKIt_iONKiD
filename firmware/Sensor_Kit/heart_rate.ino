@@ -44,7 +44,7 @@ void heart_rate(){
   lcd.setCursor(4,1);
   lcd.print(beatAvg);
 if(increment==1000){
-    Firebase.setInt("users/"+user+"/BPM",beatAvg);
+    Firebase.setInt("users/"+stringTwo+"/kids/"+kidsId+"/SKIP/BPM",beatAvg);
     increment=0;
     }
 
